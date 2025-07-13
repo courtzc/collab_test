@@ -29,7 +29,7 @@ jobs:
             **Author:** ${{ github.event.pull_request.user.login }}
             ${{ github.event.pull_request.title}}
             ${{ github.event.pull_request.body }}
-            **URL:** ${{ github.event.pull_request.html_url }}
+            **PR:** [Go to Snippet](${{ github.event.pull_request.html_url }})
             
           # The path to a file containing the body of the new discussion (takes precedence over body)
           # body-filepath: # optional
@@ -49,3 +49,20 @@ jobs:
 
           # # A GitHub token with the necessary permissions to create a discussion.
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Add discussion URL to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const discussionUrl = '${{ steps.create-discussion.outputs.discussion-url }}';
+            const discussionId = '${{ steps.create-discussion.outputs.discussion-id }}';
+            
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.pull_request.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `📝 **Discussion Created!**\n\n` +
+                    `A discussion has been created for this PR:\n` +
+                    `🔗 [View Discussion](${discussionUrl})\n\n` +
+                    `Discussion ID: ${discussionId}`
+            });
