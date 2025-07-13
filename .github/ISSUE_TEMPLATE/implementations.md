@@ -1,5 +1,5 @@
 ---
-name: Full Implementation
+name: Implementations
 about: for describing a full implementation
 title: ''
 labels: ''
