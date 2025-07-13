@@ -1,65 +1,50 @@
-# This is a basic workflow to help you get started with Actions
-
 name: discussion-creation
 
-# Controls when the workflow will run
 on:
   # Triggers the workflow only when a pull request is merged to the "main" branch
   pull_request:
-    types: [closed]
+    types: [ closed ]
     branches: [ "main" ]
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
     # Only run if the pull request was merged (not just closed)
     if: github.event.pull_request.merged == true
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
-
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
 
       - name: Create GitHub Discussion
         id: create-discussion
         uses: abirismyname/create-discussion@main
         with:
           # The title of the new discussion (from PR title).
-          title: ${{ github.event.pull_request.title }}
+          title: ${{ github.event.pull_request.title}}
+          
           # The body of the new discussion (from PR description).
-          body: ${{ github.event.pull_request.body }}
+          body: |
+            **Pull Request Body:**  ${{ github.event.pull_request.body }}
+            **Pull Request Author:** ${{ github.event.pull_request.user.login }}
+            **Pull Request URL:** ${{ github.event.pull_request.html_url }}
+            
           # The path to a file containing the body of the new discussion (takes precedence over body)
           # body-filepath: # optional
-          # # The ID of a repository in which to create the discussion.
-      
-          # repository-id: # optional
-          # # The ID of a `DiscussionCategory` within this repository.
-      
-          # category-id: # optional
-          # # The name and owner of the repository in which to create the discussion (e.g., github/octocat).
-          # #If not provided, the action will use the repository that the Action is running in.
-      
-          # repository-name: # optional, default is ${{ github.repository }}
-          # # The name of the discussion category in which to create the discussion (defaults to 'General').
-      
-          # category-name: # optional, default is General
-          # # A GitHub token with the necessary permissions to create a discussion.
-
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           
+          # The ID of a repository in which to create the discussion.
+          # repository-id: # optional
 
-      # # Runs a set of commands using the runners shell
-      # - name: Run a multi-line script
-      #   run: |
-      #     echo Add other actions to build,
-      #     echo test, and deploy your project.
+          # The ID of a `DiscussionCategory` within this repository.
+          # category-id: # optional
+
+          # The name and owner of the repository in which to create the discussion (e.g., github/octocat).
+          # If not provided, the action will use the repository that the Action is running in.
+          # repository-name: # optional, default is ${{ github.repository }}
+
+          # The name of the discussion category in which to create the discussion (defaults to 'General').
+          # category-name: # optional, default is General
+
+          # # A GitHub token with the necessary permissions to create a discussion.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
