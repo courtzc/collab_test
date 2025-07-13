@@ -54,7 +54,7 @@ jobs:
           # category-name: # optional, default is General
           # # A GitHub token with the necessary permissions to create a discussion.
 
-          # github-token: # optional
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           
 
       # # Runs a set of commands using the runners shell
