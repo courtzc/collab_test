@@ -11,8 +11,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Only run if the pull request was merged (not just closed)
-    if: github.event.pull_request.merged == true
+    # Only run if the pull request was merged (not just closed) and branch doesn't start with 'chore/'
+    if: github.event.pull_request.merged == true && !startsWith(github.event.pull_request.head.ref, 'chore/')
 
     steps:
       - uses: actions/checkout@v4
@@ -26,9 +26,10 @@ jobs:
           
           # The body of the new discussion (from PR description).
           body: |
-            **Pull Request Body:**  ${{ github.event.pull_request.body }}
-            **Pull Request Author:** ${{ github.event.pull_request.user.login }}
-            **Pull Request URL:** ${{ github.event.pull_request.html_url }}
+            **Author:** ${{ github.event.pull_request.user.login }}
+            ${{ github.event.pull_request.title}}
+            ${{ github.event.pull_request.body }}
+            **URL:** ${{ github.event.pull_request.html_url }}
             
           # The path to a file containing the body of the new discussion (takes precedence over body)
           # body-filepath: # optional
@@ -40,7 +41,7 @@ jobs:
           # category-id: # optional
 
           # The name and owner of the repository in which to create the discussion (e.g., github/octocat).
-          # If not provided, the action will use the repository that the Action is running in.
+            # If not provided, the action will use the repository that the Action is running in.
           # repository-name: # optional, default is ${{ github.repository }}
 
           # The name of the discussion category in which to create the discussion (defaults to 'General').
