@@ -1,0 +1,185 @@
+name: Auto-Create Discussions for New Submissions
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  # Add manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Run in test mode'
+        required: false
+        default: 'true'
+
+jobs:
+  create-discussions:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      discussions: write
+      
+    steps:
+      - name: Debug information
+        run: |
+          echo "=== Workflow Debug Information ==="
+          echo "Event: ${{ github.event_name }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Trigger: ${{ github.event_name }}"
+          
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "PR Title: ${{ github.event.pull_request.title }}"
+            echo "PR Author: ${{ github.event.pull_request.user.login }}"
+            echo "PR Number: ${{ github.event.pull_request.number }}"
+            echo "PR Merged: ${{ github.event.pull_request.merged }}"
+            echo "PR URL: ${{ github.event.pull_request.html_url }}"
+          else
+            echo "Manual trigger - using test data"
+          fi
+
+      - name: Check repository and discussions setup
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Checking Repository Access ==="
+          gh api repos/${{ github.repository }} --jq '.name, .permissions'
+          
+          echo "=== Checking Discussion Categories ==="
+          gh api repos/${{ github.repository }}/discussions/categories || echo "Failed to get discussion categories"
+          
+          echo "=== Checking for Code Reuse Tracking category ==="
+          category_id=$(gh api repos/${{ github.repository }}/discussions/categories --jq '.[] | select(.name=="Code Reuse Tracking") | .node_id' || echo "")
+          if [ -z "$category_id" ]; then
+            echo "❌ 'Code Reuse Tracking' category not found"
+            echo "Available categories:"
+            gh api repos/${{ github.repository }}/discussions/categories --jq '.[] | .name'
+          else
+            echo "✅ Found 'Code Reuse Tracking' category with ID: $category_id"
+          fi
+
+      - name: Create test discussion
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Creating Discussion ==="
+          
+          # Set variables based on trigger type
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pr_title="${{ github.event.pull_request.title }}"
+            pr_body="${{ github.event.pull_request.body }}"
+            pr_author="${{ github.event.pull_request.user.login }}"
+            pr_number="${{ github.event.pull_request.number }}"
+            pr_url="${{ github.event.pull_request.html_url }}"
+          else
+            # Test data for manual trigger
+            pr_title="[TEST] Sample Code Submission - Data Processing Utility"
+            pr_body="This is a test submission for the CAIRA Marketplace. This code demonstrates a data processing utility that can be reused across teams."
+            pr_author="${{ github.actor }}"
+            pr_number="TEST"
+            pr_url="https://github.com/${{ github.repository }}/pulls"
+          fi
+          
+          echo "Title: $pr_title"
+          echo "Author: $pr_author"
+          
+          # Get repository ID
+          repo_id=$(gh api repos/${{ github.repository }} --jq '.node_id')
+          echo "Repository ID: $repo_id"
+          
+          # Get category ID (try to find existing or use first available)
+          category_id=$(gh api repos/${{ github.repository }}/discussions/categories --jq '.[] | select(.name=="Code Reuse Tracking") | .node_id')
+          
+          if [ -z "$category_id" ]; then
+            echo "❌ Code Reuse Tracking category not found, using first available category"
+            category_id=$(gh api repos/${{ github.repository }}/discussions/categories --jq '.[0].node_id')
+            category_name=$(gh api repos/${{ github.repository }}/discussions/categories --jq '.[0].name')
+            echo "Using category: $category_name (ID: $category_id)"
+          fi
+          
+          if [ -z "$category_id" ]; then
+            echo "❌ No discussion categories available. Please enable discussions and create categories."
+            exit 1
+          fi
+          
+          # Create the discussion
+          echo "Creating discussion with GraphQL..."
+          
+          discussion_result=$(gh api graphql -f query='
+            mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+              createDiscussion(input: {
+                repositoryId: $repositoryId
+                categoryId: $categoryId
+                title: $title
+                body: $body
+              }) {
+                discussion {
+                  id
+                  url
+                  title
+                }
+              }
+            }' \
+            -f repositoryId="$repo_id" \
+            -f categoryId="$category_id" \
+            -f title="🔄 [TEST] Usage Tracking: $pr_title" \
+            -f body="# $pr_title
+
+          $pr_body
+
+          ---
+
+          **🔗 Original PR:** [#$pr_number]($pr_url)  
+          **👤 Submitted by:** @$pr_author  
+          **📅 Merged:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **🧪 Test Mode:** This is a test discussion created by the GitHub Actions workflow
+
+          ---
+
+          ## 📊 How to Report Usage
+
+          If you've used code from this submission, please comment below with:
+
+          \`\`\`markdown
+          ## Usage Report
+          **Team:** [Your Team Name]
+          **Use Case:** [Brief description of how you used this code]
+          **Date Used:** [YYYY-MM-DD]
+          **Adaptation Level:** [Copied directly / Modified / Inspired by]
+          **Link to Implementation:** [Optional: Link to your implementation]
+          \`\`\`
+
+          ---
+
+          ## 📈 Usage Statistics
+          
+          <!-- This section will be updated by automation -->
+          **Total Reported Uses:** 0  
+          **Teams Using This:** 0  
+          **Last Usage Reported:** Never
+
+          ---
+
+          *This discussion was automatically created by the CAIRA Marketplace tracking system.*  
+          *For questions about this submission, please refer to the original PR or contact @$pr_author.*")
+          
+          if [ $? -eq 0 ]; then
+            discussion_url=$(echo "$discussion_result" | jq -r '.data.createDiscussion.discussion.url')
+            discussion_title=$(echo "$discussion_result" | jq -r '.data.createDiscussion.discussion.title')
+            echo "✅ Successfully created discussion: $discussion_title"
+            echo "🔗 Discussion URL: $discussion_url"
+          else
+            echo "❌ Failed to create discussion"
+            echo "Error details: $discussion_result"
+            exit 1
+          fi
+
+      - name: Test summary
+        if: always()
+        run: |
+          echo "=== Test Summary ==="
+          echo "Workflow completed. Check the output above for any errors."
+          echo "If successful, you should see a new discussion in your repository's Discussions tab."
+          echo "Look for a discussion with title starting with '🔄 [TEST] Usage Tracking:'"
