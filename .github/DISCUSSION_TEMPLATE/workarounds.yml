@@ -1,15 +1,15 @@
-title: "Implementation Discussion"
-labels: ["implementations"]
+title: "Workaround Discussion"
+labels: ["workarounds"]
 body:
   - type: markdown
     attributes:
       value: |
         This is text that will show up in the template!
   - type: textarea
-    id: improvements
+    id: thingo
     attributes:
-      label: Top 3 improvements
-      description: "What was the use case you were solving for?"
+      label: The problem
+      description: "What was the tech that didn't work and what happened?"
       value: |
         1.
         2.
