@@ -4,8 +4,9 @@ name: discussion-creation
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow when a pull request is merged to the "main" branch
-  push:
+  # Triggers the workflow only when a pull request is merged to the "main" branch
+  pull_request:
+    types: [closed]
     branches: [ "main" ]
 
   # Allows you to run this workflow manually from the Actions tab
@@ -17,6 +18,8 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    # Only run if the pull request was merged (not just closed)
+    if: github.event.pull_request.merged == true
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -31,10 +34,10 @@ jobs:
         id: create-discussion
         uses: abirismyname/create-discussion@main
         with:
-          # The title of the new discussion.
-          title: test
-          # The body of the new discussion.
-          body: test body
+          # The title of the new discussion (from PR title).
+          title: ${{ github.event.pull_request.title }}
+          # The body of the new discussion (from PR description).
+          body: ${{ github.event.pull_request.body }}
           # The path to a file containing the body of the new discussion (takes precedence over body)
           # body-filepath: # optional
           # # The ID of a repository in which to create the discussion.
