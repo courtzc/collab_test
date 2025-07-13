@@ -1,6 +1,6 @@
 ---
 title: "Implementation Discussion"
-labels: ["implementation"]
+labels: ["implementations"]
 body:
   - type: input
     id: title
